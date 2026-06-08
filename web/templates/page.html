@@ -401,6 +401,8 @@
                 <button type="button" id="selectAllBtn" style="width: auto; padding: 0 1rem; height: 4vh; margin: 0;">Select All</button>
                 <button type="button" id="invertSelectionBtn" style="width: auto; padding: 0 1rem; height: 4vh; margin: 0;">Invert</button>
                 <button type="button" id="selectEverythingBtn" style="width: auto; padding: 0 1rem; height: 4vh; margin: 0;">Select Everything</button>
+                <input type="text" id="rangeInput" placeholder="e.g. 1-10, 15, 20-22" style="width: auto; padding: 0 0.5rem; height: 4vh; margin: 0; flex: 1; min-width: 150px;">
+                <button type="button" id="applyRangeBtn" style="width: auto; padding: 0 1rem; height: 4vh; margin: 0;">Apply Range</button>
             </div>
             <button type="button" id="submitBtn">Submit Selection</button>
         </div>
@@ -430,6 +432,8 @@
         const totalFilesEl = document.getElementById('total_files');
         const checkedSizeEl = document.getElementById('checked_size');
         const totalSizeEl = document.getElementById('total_size');
+        const rangeInput = document.getElementById('rangeInput');
+        const applyRangeBtn = document.getElementById('applyRangeBtn');
 
         pinInput.focus();
         const urlParams = new Proxy(new URLSearchParams(window.location.search), {
@@ -879,6 +883,72 @@
             });
         });
 
+        function getAllFiles(nodes) {
+            let fileList = [];
+            for (const node of nodes) {
+                if (node.type === 'file') {
+                    fileList.push(node);
+                } else if (node.children) {
+                    fileList = fileList.concat(getAllFiles(node.children));
+                }
+            }
+            return fileList;
+        }
+
+        function selectByRange() {
+            const rangeStr = rangeInput.value.trim();
+            if (!rangeStr) {
+                modalTitle.textContent = 'Input Required';
+                modalBody.innerHTML = '<p>Please enter a range or file number.</p>';
+                modalFooter.innerHTML = '<button onclick="closeModal()">Okay</button>';
+                openModal();
+                return;
+            }
+
+            const indicesToSelect = new Set();
+            try {
+                const parts = rangeStr.split(',');
+                parts.forEach(part => {
+                    part = part.trim();
+                    if (part.includes('-')) {
+                        const [start, end] = part.split('-').map(num => parseInt(num.trim(), 10));
+                        if (isNaN(start) || isNaN(end) || start > end || start < 1) {
+                            throw new Error(`Invalid range: "${part}"`);
+                        }
+                        for (let i = start; i <= end; i++) {
+                            indicesToSelect.add(i);
+                        }
+                    } else {
+                        const num = parseInt(part, 10);
+                        if (isNaN(num) || num < 1) {
+                            throw new Error(`Invalid number: "${part}"`);
+                        }
+                        indicesToSelect.add(num);
+                    }
+                });
+
+                const allFiles = getAllFiles(files);
+
+                allFiles.forEach((fileNode, index) => {
+                    if (indicesToSelect.has(index + 1)) {
+                        fileNode.selected = true;
+                    }
+                });
+                
+                if (files.length > 0) {
+                    updateParentFolders(files[0]);
+                }
+                updateStats();
+                renderFileTree(currentFolder ? currentFolder.children : files);
+                rangeInput.value = '';
+            } catch (error) {
+                modalTitle.textContent = 'Invalid Input';
+                modalBody.innerHTML = `<p>There was an error parsing your input: ${error.message}.<br>Please use a format like "1-10, 15, 20-22".</p>`;
+                modalFooter.innerHTML = '<button onclick="closeModal()">Okay</button>';
+                openModal();
+            }
+        }
+
         const invertSelectionBtn = document.getElementById('invertSelectionBtn');
         const selectEverythingBtn = document.getElementById('selectEverythingBtn');
 
@@ -888,6 +958,7 @@
         selectAllBtn.addEventListener('click', selectAll);
         selectEverythingBtn.addEventListener('click', selectEverything);
         submitBtn.addEventListener('click', submitData);
+        applyRangeBtn.addEventListener('click', selectByRange);
 
         reusableModal.addEventListener('click', (event) => {
             if (event.target === reusableModal) {
