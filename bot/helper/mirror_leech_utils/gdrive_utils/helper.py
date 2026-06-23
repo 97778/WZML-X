@@ -74,6 +74,9 @@ class GoogleDriveHelper:
         if self.use_sa:
             json_files = listdir("accounts")
             self.sa_number = len(json_files)
+            if self.sa_number == 0:
+                LOGGER.error("No service account files found in accounts/")
+                raise ValueError("No service account files found")
             self.sa_index = randrange(self.sa_number)
             LOGGER.info(f"Authorizing with {json_files[self.sa_index]} service account")
             credentials = service_account.Credentials.from_service_account_file(
@@ -151,7 +154,12 @@ class GoogleDriveHelper:
         }
         return (
             self.service.permissions()
-            .create(fileId=file_id, body=permissions, supportsAllDrives=True, sendNotificationEmail=False)
+            .create(
+                fileId=file_id,
+                body=permissions,
+                supportsAllDrives=True,
+                sendNotificationEmail=False,
+            )
             .execute()
         )
 

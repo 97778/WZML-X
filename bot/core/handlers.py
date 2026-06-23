@@ -58,9 +58,7 @@ def add_handlers():
     TgClient.bot.add_handler(
         MessageHandler(
             black_listed,
-            filters=regex(r"^/")
-            & CustomFilters.authorized
-            & CustomFilters.blacklisted,
+            filters=regex(r"^/") & CustomFilters.authorized & CustomFilters.blacklisted,
         )
     )
     TgClient.bot.add_handler(
@@ -133,7 +131,7 @@ def add_handlers():
     TgClient.bot.add_handler(
         MessageHandler(
             select,
-            filters=command(BotCommands.SelectCommand, case_sensitive=True)
+            filters=regex(rf"^/{BotCommands.SelectCommand[1]}?(?:_\w+).*$")
             & CustomFilters.authorized,
         )
     )
@@ -420,11 +418,22 @@ def add_handlers():
     TgClient.bot.add_handler(
         MessageHandler(
             change_category,
-            filters=command(BotCommands.CategorySelectCommand) & CustomFilters.authorized,
+            filters=command(BotCommands.CategorySelectCommand)
+            & CustomFilters.authorized,
         )
     )
     TgClient.bot.add_handler(
         CallbackQueryHandler(confirm_category, filters=regex("^scat"))
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            drive_clean,
+            filters=command(BotCommands.GDCleanCommand, case_sensitive=True)
+            & CustomFilters.authorized,
+        )
+    )
+    TgClient.bot.add_handler(
+        CallbackQueryHandler(confirm_drive_clean_cb, filters=regex("^gdccat"))
     )
     if Config.SET_COMMANDS:
         global BOT_COMMANDS

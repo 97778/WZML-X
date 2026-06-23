@@ -7,9 +7,7 @@ DATABASE_URL = ""
 
 # OPTIONAL CONFIG
 DEFAULT_LANG = "en"
-TG_PROXY = (
-    {}
-)  # {"scheme": ”socks5”, "hostname": ””, "port": 1234, "username": ”user”, "password": ”pass”}
+TG_PROXY = {}  # {"scheme": ”socks5”, "hostname": ””, "port": 1234, "username": ”user”, "password": ”pass”}
 USER_SESSION_STRING = ""
 CMD_SUFFIX = ""
 AUTHORIZED_CHATS = ""
@@ -26,10 +24,13 @@ USE_SERVICE_ACCOUNTS = False
 NAME_SWAP = ""
 FFMPEG_CMDS = {}
 UPLOAD_PATHS = {}
-WEB_ACCESS_PASSWORD=""  # Secret for deriving proxy passwords. Logs derived passwords at startup.
+WEB_ACCESS_PASSWORD = (
+    ""  # Secret for deriving proxy passwords. Logs derived passwords at startup.
+)
 
 # Hyper Tg Downloader
 HELPER_TOKENS = ""
+USE_HYPER = True
 
 # MegaAPI v4.30
 MEGA_EMAIL = ""
@@ -43,6 +44,11 @@ DISABLE_BULK = False
 DISABLE_MULTI = False
 DISABLE_SEED = False
 DISABLE_FF_MODE = False
+DISABLE_JD = False
+DISABLE_NZB = False
+DISABLE_RSS = False
+DISABLE_SEARCH = False
+DISABLE_YTDLP = False
 
 # Telegraph
 AUTHOR_NAME = "WZML-X"
@@ -63,6 +69,12 @@ LEECH_LIMIT = 0
 EXTRACT_LIMIT = 0
 ARCHIVE_LIMIT = 0
 STORAGE_LIMIT = 0
+
+# CPU limit for background services (SABnzbd, JDownloader). Default: 20
+CPU_LIMIT = 20
+
+# Throttle services during heavy ops (FFmpeg). auto=low-end only, always, never
+THROTTLE_SERVICES = "auto"
 
 # Image Search
 USE_IMAGES = False
@@ -160,15 +172,12 @@ USENET_SERVERS = [
 # Update
 UPSTREAM_REPO = ""
 UPSTREAM_BRANCH = "master"
-UPDATE_PKGS = True
-
 # Leech
 LEECH_SPLIT_SIZE = 0
 AS_DOCUMENT = False
 EQUAL_SPLITS = False
 MEDIA_GROUP = False
-USER_TRANSMISSION = True
-HYBRID_LEECH = True
+TRANSMISSION_MODE = "both"
 LEECH_PREFIX = ""
 LEECH_SUFFIX = ""
 LEECH_FONT = ""

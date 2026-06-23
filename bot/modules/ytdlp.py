@@ -382,7 +382,7 @@ class YtDlp(TaskListener):
         self.thumbnail_layout = args["-tl"]
         self.as_doc = args["-doc"]
         self.as_med = args["-med"]
-        self.folder_name = f"/{args["-m"]}".rstrip("/") if len(args["-m"]) > 0 else ""
+        self.folder_name = f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.metadata_dict = self.default_metadata_dict.copy()
@@ -523,8 +523,14 @@ class YtDlp(TaskListener):
 
 
 async def ytdl(client, message):
+    if Config.DISABLE_YTDLP:
+        await message.reply("YT-DLP downloads are currently disabled by the Bot Owner.")
+        return
     bot_loop.create_task(YtDlp(client, message).new_event())
 
 
 async def ytdl_leech(client, message):
+    if Config.DISABLE_YTDLP:
+        await message.reply("YT-DLP downloads are currently disabled by the Bot Owner.")
+        return
     bot_loop.create_task(YtDlp(client, message, is_leech=True).new_event())

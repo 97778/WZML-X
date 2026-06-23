@@ -24,7 +24,15 @@ try:
 except ImportError:
     FloodPremiumWait = FloodWait
 
-from ... import LOGGER, bot_cache, categories_dict, intervals, status_dict, task_dict_lock, user_data
+from ... import (
+    LOGGER,
+    bot_cache,
+    categories_dict,
+    intervals,
+    status_dict,
+    task_dict_lock,
+    user_data,
+)
 from ...core.config_manager import Config
 from ...core.tg_client import TgClient
 from ..ext_utils.bot_utils import SetInterval, download_image_url, fetch_drive_cat
@@ -139,9 +147,11 @@ async def send_message(message, text, buttons=None, block=True, photo=None, **kw
     except (MessageEmpty, EntityBoundsInvalid):
         return await send_message(message, text, parse_mode=ParseMode.DISABLED)
     except PeerIdInvalid:
-        LOGGER.warning(f"PeerIdInvalid {type(message)}") # My Debug Style
+        LOGGER.warning(f"PeerIdInvalid {type(message)}")  # My Debug Style
         if isinstance(message, (int, str)):
             return await send_message(int(message), text, buttons, block, photo)
+    except ConnectionError:
+        return
     except Exception as e:
         LOGGER.error(str(e), exc_info=True)
         return str(e)
@@ -196,6 +206,8 @@ async def edit_message(message, text, buttons=None, block=True, photo=None):
             return str(f)
         await sleep(f.value * 1.2)
         return await edit_message(message, text, buttons, block, photo)
+    except ConnectionError:
+        return
     except Exception as e:
         LOGGER.error(str(e), exc_info=True)
         return str(e)
@@ -210,6 +222,8 @@ async def edit_reply_markup(message, buttons):
         LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
         return await edit_reply_markup(message, buttons)
+    except ConnectionError:
+        return
     except Exception as e:
         LOGGER.error(str(e), exc_info=True)
         return str(e)
@@ -228,6 +242,8 @@ async def send_file(message, file, caption="", buttons=None):
         LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
         return await send_file(message, file, caption)
+    except ConnectionError:
+        return
     except Exception as e:
         LOGGER.error(str(e), exc_info=True)
         return str(e)
@@ -246,6 +262,8 @@ async def send_rss(text, chat_id, thread_id):
         LOGGER.warning(str(f))
         await sleep(f.value * 1.2)
         return await send_rss(text, chat_id, thread_id)
+    except ConnectionError:
+        return
     except Exception as e:
         LOGGER.error(str(e), exc_info=True)
         return str(e)
@@ -421,7 +439,9 @@ async def send_status_message(msg, user_id=0):
                     del intervals["status"][sid]
                 return
             old_message = status_dict[sid]["message"]
-            message = await send_message(msg, text, buttons, block=False, photo="IMAGES")
+            message = await send_message(
+                msg, text, buttons, block=False, photo="IMAGES"
+            )
             if isinstance(message, str):
                 LOGGER.error(
                     f"Status with id: {sid} haven't been sent. Error: {message}"
@@ -434,7 +454,9 @@ async def send_status_message(msg, user_id=0):
             text, buttons = await get_readable_message(sid, is_user)
             if text is None:
                 return
-            message = await send_message(msg, text, buttons, block=False, photo="IMAGES")
+            message = await send_message(
+                msg, text, buttons, block=False, photo="IMAGES"
+            )
             if isinstance(message, str):
                 LOGGER.error(
                     f"Status with id: {sid} haven't been sent. Error: {message}"
@@ -472,14 +494,17 @@ async def open_category_btns(message):
         if i == 0:
             cat_name = name
         buttons.data_button(
-            f'{"✓️" if i == 0 else ""} {name}',
+            f"{'✓️' if i == 0 else ''} {name}",
             f"scat {user_id} {msg_id} {name.replace(' ', '_')}",
         )
     buttons.data_button(
         "Cancel", f"scat {user_id} {msg_id} scancel", "footer", style=ButtonStyle.DANGER
     )
     buttons.data_button(
-        "Done (60)", f"scat {user_id} {msg_id} sdone", "footer", style=ButtonStyle.SUCCESS
+        "Done (60)",
+        f"scat {user_id} {msg_id} sdone",
+        "footer",
+        style=ButtonStyle.SUCCESS,
     )
     prompt = await send_message(
         message,
@@ -501,3 +526,52 @@ async def open_category_btns(message):
         await edit_message(prompt, "<b>Task Cancelled</b>")
     del bot_cache[msg_id]
     return drive_id, index_link, is_cancelled
+
+
+async def open_drive_clean(message):
+    user_id = message.from_user.id
+    msg_id = message.id
+    buttons = ButtonMaker()
+    dcats = fetch_drive_cat(user_id)
+    default_id = user_data.get(user_id, {}).get("GDRIVE_ID") or Config.GDRIVE_ID
+    default_index = user_data.get(user_id, {}).get("INDEX_URL") or Config.INDEX_URL
+    merged = {
+        "Default": {"drive_id": default_id, "index_link": default_index},
+        **dcats,
+        **categories_dict,
+    }
+    first_cat = None
+    for i, name in enumerate(merged):
+        if i == 0:
+            first_cat = name
+        buttons.data_button(
+            f"{'✓️' if i == 0 else ''} {name}",
+            f"gdccat {user_id} {msg_id} {name.replace(' ', '_')}",
+        )
+    buttons.data_button(
+        "Cancel",
+        f"gdccat {user_id} {msg_id} ccancel",
+        position="footer",
+        style=ButtonStyle.DANGER,
+    )
+    prompt = await send_message(
+        message,
+        f"<b>Select Drive Category to Clean</b>\n\n"
+        f"<b>Category:</b> <code>{first_cat or 'None'}</code>\n\n"
+        f"<b>Timeout:</b> 60 sec",
+        buttons.build_menu(3),
+    )
+    start_time = time()
+    bot_cache[msg_id] = [None, False, False, start_time]
+    while time() - start_time <= 60:
+        await sleep(0.5)
+        if bot_cache[msg_id][1] or bot_cache[msg_id][2]:
+            break
+    drive_id = bot_cache[msg_id][0]
+    is_cancelled = bot_cache[msg_id][1]
+    if not is_cancelled:
+        await delete_message(prompt)
+    else:
+        await edit_message(prompt, "<b>Task Cancelled</b>")
+    del bot_cache[msg_id]
+    return drive_id, is_cancelled
